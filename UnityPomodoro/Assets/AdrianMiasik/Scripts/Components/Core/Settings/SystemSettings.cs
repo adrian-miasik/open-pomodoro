@@ -31,5 +31,12 @@ namespace AdrianMiasik.Components.Core.Settings
         /// If `False`, the Unity Analytics service will no longer run and track user data.
         /// </summary>
         public bool m_enableUnityAnalytics = true;
+        
+        /// <summary>
+        /// Do you want to enable the Steam Rich Presence functionality?
+        /// If `True`, users state and custom labels will be shared with friends via Steam chat client.
+        /// If `False`, users state and custom labels will not be shared on Steam.
+        /// </summary>
+        public bool m_enableSteamRichPresence = true;
     }
 }

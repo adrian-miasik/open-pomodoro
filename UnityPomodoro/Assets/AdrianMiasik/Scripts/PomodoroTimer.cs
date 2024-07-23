@@ -20,7 +20,6 @@ using Steamworks;
 using Steamworks.Data;
 using LeTai.Asset.TranslucentImage;
 using QFSW.QC;
-using TMPro;
 using Unity.Services.Analytics;
 using Unity.Services.Core;
 using UnityEngine;
@@ -244,8 +243,9 @@ namespace AdrianMiasik
         private void ConfigureSettings()
         {
 #if !UNITY_ANDROID && !UNITY_WSA
-            // Steam manager has to be loaded prior to the other managers since settings could be saved via Cloud Save.
-            m_steamManager.Initialize();
+            // Steam manager has to be loaded prior to the other managers since settings could be saved in
+            // (then loaded from) Cloud Save.
+            m_steamManager.Initialize(this);
 #endif
             
             SystemSettings systemSettings = UserSettingsSerializer.LoadSettings<SystemSettings>("system-settings");
@@ -253,7 +253,7 @@ namespace AdrianMiasik
             // System Settings
             if (systemSettings == null)
             {
-                Debug.Log("A new SYSTEM settings file has been created successfully!");
+                Debug.LogWarning("A new SYSTEM settings file has been created successfully!");
                 
                 // Create new settings
                 SystemSettings defaultSystemSettings = new SystemSettings();
@@ -274,9 +274,24 @@ namespace AdrianMiasik
                 defaultSystemSettings.m_muteSoundWhenOutOfFocus = false; // Doesn't quite matter for mobile.
 #endif
                 
-                // All platforms have analytics on by default. (User can opt-out though via SettingsPage)
+                // All platforms have analytics on by default. (User can opt-out via the SettingsPage)
                 defaultSystemSettings.m_enableUnityAnalytics = true;
-                
+
+                // Steam rich presence enabled by default on platforms that support it.
+                // (User can opt-out via the SettingsPage)
+#if !UNITY_ANDROID && !UNITY_WSA
+                if (m_steamManager.IsInitialized())
+                {
+                    defaultSystemSettings.m_enableSteamRichPresence = true;
+                }
+                else
+                {
+                    defaultSystemSettings.m_enableSteamRichPresence = false;
+                }
+#else
+                defaultSystemSettings.m_enableSteamRichPresence = false;
+#endif
+
                 // Cache
                 systemSettings = defaultSystemSettings;
                 UserSettingsSerializer.SaveSettingsFile(systemSettings, "system-settings");
@@ -301,7 +316,7 @@ namespace AdrianMiasik
             // If we don't have any saved settings...
             if (timerSettings == null)
             {
-                Debug.Log("A new TIMER settings file has been created successfully!");
+                Debug.LogWarning("A new TIMER settings file has been created successfully!");
                 
                 // Create new settings
                 TimerSettings defaultTimerSettings = new()
@@ -433,8 +448,8 @@ namespace AdrianMiasik
 #endif
 
         /// <summary>
-        /// Fetch streaming assets, initialize managers, set component overrides, initialize components, and
-        /// setup view, and transition/animate in.
+        /// Initialize managers, set component overrides, initialize components, fetch streaming assets if applicable,
+        /// then setup view, and transition/animate in.
         /// </summary>
         private IEnumerator Initialize()
         {
@@ -482,9 +497,22 @@ namespace AdrianMiasik
         /// </summary>
         private void InitializeManagers()
         {
+            // General Managers
+            if (m_console)
+            {
+                // Subscribe to console event callbacks
+                m_console.OnActivate += OnConsoleOpen;
+                m_console.OnDeactivate += OnConsoleClose;
+            }
             m_hotkeyDetector.Initialize(this);
             m_resolutionDetector.Initialize(this);
             m_confirmationDialogManager.Initialize(this);
+            
+            // Platform Managers
+#if !UNITY_ANDROID && !UNITY_WSA
+            // Steam Platforms
+            m_steamManager.InitializeSteamModules();
+#endif
 
 #if UNITY_WSA
             // UWP Toast / Notification
@@ -495,18 +523,9 @@ namespace AdrianMiasik
 #if UNITY_ANDROID
             // Android Notification
             m_androidNotifications.Initialize(this);
-#endif
-
-            if (m_console)
-            {
-                // Subscribe to console event callbacks
-                m_console.OnActivate += OnConsoleOpen;
-                m_console.OnDeactivate += OnConsoleClose;
-            }
 
             // Register elements that need updating per timer state change
-#if UNITY_ANDROID
-            timerElements.Add(m_androidNotifications);
+            SubscribeToTimerStates(m_androidNotifications);
 #endif
         }
 
@@ -660,14 +679,23 @@ namespace AdrianMiasik
             m_sidebarPages.Initialize(this);
 
             // Register elements that need updating per timer state change
-            timerElements.Add(m_labelText);
-            timerElements.Add(m_stateIndicator);
-            timerElements.Add(m_rightButton);
-            timerElements.Add(m_completionLabel);
-            timerElements.Add(m_endTimestampGhost);
-            timerElements.Add(m_skipButton);
+            SubscribeToTimerStates(m_labelText);
+            SubscribeToTimerStates(m_stateIndicator);
+            SubscribeToTimerStates(m_rightButton);
+            SubscribeToTimerStates(m_completionLabel);
+            SubscribeToTimerStates(m_endTimestampGhost);
+            SubscribeToTimerStates(m_skipButton);
 
             haveComponentsBeenInitialized = true;
+        }
+        
+        /// <summary>
+        /// Registers the provided interface to be invoked when this pomodoro timer's state changes.
+        /// </summary>
+        /// <param name="timerState"></param>
+        public void SubscribeToTimerStates(ITimerState timerState)
+        {
+            timerElements.Add(timerState);
         }
 
         public bool HaveComponentsBeenInitialized()
@@ -1145,6 +1173,7 @@ namespace AdrianMiasik
         public void SwitchTimer(bool isOnBreak)
         {
             m_digitFormat.m_isOnBreak = isOnBreak;
+            m_labelText.UpdateSteamRichPresenceLabel(); // Force steam rich presence to trigger
             SwitchState(States.SETUP);
             isTimerBeingSetup = true;
             CalculateTimeValues();
@@ -1303,9 +1332,9 @@ namespace AdrianMiasik
         /// <example>Such as "00:24:35" (without the quotation marks)</example>
         /// </summary>
         /// <returns>Our current timer value.</returns>
-        public string GetTimerString()
+        public string GetTimerString(bool richPresenceFormat = false)
         {
-            return m_digitFormat.GetTimerString();
+            return m_digitFormat.GetTimerString(richPresenceFormat);
         }
         
         /// <summary>
@@ -1353,7 +1382,16 @@ namespace AdrianMiasik
         {
             return m_sidebarPages.IsAboutPageOpen();
         }
-        
+
+        /// <summary>
+        /// Is our <see cref="SettingsPage"/> currently open and visible?
+        /// </summary>
+        /// <returns></returns>
+        public bool IsSettingPageOpen()
+        {
+            return m_sidebarPages.IsSettingsPageOpen();
+        }
+
         /// <summary>
         /// Is our <see cref="Sidebar"/> currently open and visible?
         /// </summary>
@@ -1884,12 +1922,33 @@ namespace AdrianMiasik
             m_digitFormat.ShowTickAnimation();
         }
 
+        public bool IsSteamworksInitialized()
+        {
+            return m_steamManager.IsInitialized();
+        }
+        
 #if !UNITY_ANDROID && !UNITY_WSA
         public void ShutdownSteamManager()
         {
             m_steamManager.Shutdown();
         }
 #endif
+        
+        public void UpdateSteamRichPresence()
+        {
+            // Update state
+            m_steamManager.UpdateState(m_state, GetTheme());
+            
+            // Override state if on settings page...
+            if (IsSettingPageOpen())
+            {
+                SteamTrySetRichPresence("steam_display", "#Settings");
+            }
+            
+            // Update label
+            m_labelText.UpdateSteamRichPresenceLabel();
+        }
+        
         public void TrySubmitConfirmationDialog()
         {
             m_confirmationDialogManager.GetCurrentConfirmationDialog()?.Submit();
@@ -1908,5 +1967,47 @@ namespace AdrianMiasik
             // Re-init
             m_creditsGhost.Restart();
         }
+        
+        /// <summary>
+        /// Attempts to set the Steam Rich Presence states.
+        /// Will safely fail if Steam Rich Presence module isn't initialized.
+        /// See <see cref="IsSteamworksRichPresenceInitialized"/>, <see cref="InitializeSteamRichPresence"/>, and
+        /// <seealso cref="ClearSteamRichPresence"/>.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        public void SteamTrySetRichPresence(string key, string value)
+        {
+            m_steamManager.SetRichPresence(key, value);
+        }
+        
+#if !UNITY_ANDROID && !UNITY_WSA 
+        /// <summary>
+        /// Is the Steam Rich presence module initialized/currently running?
+        /// </summary>
+        /// <returns></returns>
+        public bool IsSteamworksRichPresenceInitialized()
+        {
+            return m_steamManager.IsRichPresenceInitialized();
+        }
+
+        /// <summary>
+        /// Inits/Starts-up our Steam Rich presence module.
+        /// </summary>
+        /// <exception cref="NotImplementedException"></exception>
+        public void InitializeSteamRichPresence()
+        {
+            // TODO: Only initialize steam rich presence
+            m_steamManager.InitializeSteamModules();
+        }
+
+        /// <summary>
+        /// Clears out and disables the Steam Rich Presence module.
+        /// </summary>
+        public void ClearSteamRichPresence()
+        {
+            m_steamManager.ClearSteamRichPresence();
+        }
+#endif
     }
 }

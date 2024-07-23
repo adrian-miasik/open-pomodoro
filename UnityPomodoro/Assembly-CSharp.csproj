@@ -101,6 +101,7 @@
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Base\ClickButton.cs" />
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Base\Ghost.cs" />
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Specific\SkipButton.cs" />
+    <Compile Include="Assets\AdrianMiasik\Scripts\Components\Specific\Settings\OptionSteamRichPresence.cs" />
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Specific\ResolutionDetector.cs" />
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Specific\ThemeSlider.cs" />
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Base\Page.cs" />
@@ -110,6 +111,7 @@
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Core\Items\SidebarRow.cs" />
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Core\Helpers\DateTimeHelper.cs" />
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Specific\Settings\OptionUnityAnalytics.cs" />
+    <Compile Include="Assets\AdrianMiasik\Scripts\Components\Specific\Platforms\Steam\SteamRichPresence.cs" />
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Core\ThemeIcon.cs" />
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Core\Settings\UserSettingsSerializer.cs" />
     <Compile Include="Assets\AdrianMiasik\Scripts\Components\Core\ThemeManager.cs" />

@@ -2,6 +2,7 @@
 using AdrianMiasik.Components.Base;
 using AdrianMiasik.Interfaces;
 using AdrianMiasik.ScriptableObjects;
+using Steamworks;
 using TMPro;
 using UnityEngine;
 
@@ -46,6 +47,22 @@ namespace AdrianMiasik.Components.Core
 
             // Debug.Log("The input label text has been deselected: " + inputFieldString);
         }
+        
+        public void UpdateSteamRichPresenceLabel()
+        {
+            if (!Timer.IsOnBreak())
+            {
+                SetUserText("Set a work time");
+            }
+            else if (Timer.IsOnLongBreak())
+            {
+                SetUserText("Set a long break time");
+            }
+            else
+            {
+                SetUserText("Set a break time");
+            }
+        }
 
         /// <summary>
         /// Sets the label based on the current timer state.
@@ -77,10 +94,15 @@ namespace AdrianMiasik.Components.Core
         /// <param name="isOverridingDefaultText"></param>
         private void SetUserStateText(string desiredText, bool isOverridingDefaultText)
         {
+            // Steam rich presence
+            bool isTextEmpty = desiredText == String.Empty;
+
             if (!Timer.IsOnBreak())
             {
                 isOverridingDefaultWorkText = isOverridingDefaultText;
                 workText = desiredText;
+                
+                Timer.SteamTrySetRichPresence("label", isTextEmpty ? "Work Timer" : desiredText);
             }
             else
             {
@@ -88,11 +110,15 @@ namespace AdrianMiasik.Components.Core
                 {
                     isOverridingDefaultBreakText = isOverridingDefaultText;
                     breakText = desiredText;
+
+                    Timer.SteamTrySetRichPresence("label", isTextEmpty ? "Break Timer" : desiredText);
                 }
                 else
                 {
                     isOverridingDefaultLongBreakText = isOverridingDefaultText;
                     longBreakText = desiredText;
+                    
+                    Timer.SteamTrySetRichPresence("label", isTextEmpty ? "Long Break Timer" : desiredText);
                 }
             }
         }
@@ -110,24 +136,6 @@ namespace AdrianMiasik.Components.Core
 
             return !Timer.IsOnLongBreak() ? breakText : longBreakText;
         }
-
-        // /// <summary>
-        // /// Adds a suffix to the input label text (Only if the text is custom and not default)
-        // /// </summary>
-        // /// <param name="suffix"></param>
-        // private void SetSuffix(string suffix)
-        // {
-        //     if (string.IsNullOrEmpty(GetUserStateText()))
-        //     {
-        //         // Only show suffix
-        //         m_inputText.text = suffix;
-        //     }
-        //     else
-        //     {
-        //         // Show user text + suffix
-        //         m_inputText.text = GetUserStateText() + ": " + suffix;
-        //     }
-        // }
 
         /// <summary>
         /// Is the current timer state using custom user text?

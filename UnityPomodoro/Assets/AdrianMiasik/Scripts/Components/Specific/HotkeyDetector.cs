@@ -183,9 +183,13 @@ namespace AdrianMiasik.Components.Specific
             timer.GetConfirmDialogManager().SpawnConfirmationDialog(() =>
                 {
 #if !UNITY_ANDROID && !UNITY_WSA
-                    SteamUserStats.ResetAll(true);
-                    SteamUserStats.StoreStats();
-                    SteamUserStats.RequestCurrentStats();
+                    if (timer.IsSteamworksInitialized())
+                    {
+                        SteamUserStats.ResetAll(true);
+                        SteamUserStats.StoreStats();
+                        SteamUserStats.RequestCurrentStats();
+                    }
+
 #endif
                     RestartApplication(quitApplicationOnRestartConfirm);
                 }, null, 

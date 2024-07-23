@@ -750,20 +750,66 @@ namespace AdrianMiasik.Components.Core.Containers
         {
             return generatedDigits;
         }
-
+        
         /// <summary>
         /// Returns our current timer values in a <see cref="String"/>.
         /// <example>Such as "00:24:35" (without the quotation marks)</example>
         /// </summary>
+        /// <param name="richPresenceFormat">If true, we will return a simplified but labeled format such as: "23m 50s"</param>
         /// <returns>Our current timer value.</returns>
-        public string GetTimerString()
+        public string GetTimerString(bool richPresenceFormat = false)
         {
             string result = String.Empty;
 
             for (int i = 0; i < generatedDigits.Count; i++)
             {
                 DoubleDigit digit = generatedDigits[i];
-                result += digit.GetDigitsLabel();
+
+                if (richPresenceFormat)
+                {
+                    if (digit.GetDigitsLabel() == "00")
+                    {
+                        // Skip/Don't print number
+                        continue;
+                    }
+                    // Otherwise...
+
+                    // Print number
+                    result += digit.GetDigitsLabel();
+                    
+                    // Print suffix
+                    switch (digit.m_digit)
+                    {
+                        case Digits.DAYS:
+                            result += "d";
+                            break;
+                        case Digits.HOURS:
+                            result += "h";
+                            break;
+                        case Digits.MINUTES:
+                            result += "m";
+                            break;
+                        case Digits.SECONDS:
+                            result += "s";
+                            break;
+                        case Digits.MILLISECONDS:
+                            result += "ms";
+                            break;
+                        default:
+                            Debug.LogWarning("Unsupported enum type.");
+                            break;
+                    }
+
+                    if (i != generatedDigits.Count - 1) // last digit
+                    {
+                        // Add padding between "sets" such as: '23m' and '56s'.
+                        result += " ";
+                    }
+                }
+                else
+                {
+                    result += digit.GetDigitsLabel();
+                }
 
                 // Skip last iteration
                 if (i == generatedDigits.Count - 1)
@@ -771,7 +817,10 @@ namespace AdrianMiasik.Components.Core.Containers
                     break;
                 }
 
-                result += ":";
+                if (!richPresenceFormat)
+                {
+                    result += ":";
+                }
             }
 
             return result;

@@ -1,0 +1,12 @@
+"lang"
+{
+	"Language"	"english"
+	"Tokens"
+	{
+	    "#Setup"  "🛠️ Setup"
+	    "#Running"  "⌛ Running... '%LABEL%' - %TIME_LEFT%%TIME_SUFFIX%"
+	    "#Paused"  "⏸️ Paused. '%LABEL%' - %TIME_LEFT%%TIME_SUFFIX%"
+	    "#Completed"  "✅ Timer Completed! '%LABEL%'"
+	    "#Settings"  "⚙️ Tweaking Application Settings..."
+	}
+}
